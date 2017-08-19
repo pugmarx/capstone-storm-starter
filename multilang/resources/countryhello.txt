@@ -1,0 +1,6 @@
+Canada,Hello
+US,Hello
+UK,Hello
+India,Namaste
+Japan,Arrigato!
+Nepal,Namaste

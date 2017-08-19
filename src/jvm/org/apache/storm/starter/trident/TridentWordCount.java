@@ -48,13 +48,13 @@ public class TridentWordCount {
   }
 
   public static StormTopology buildTopology(LocalDRPC drpc) {
-    FixedBatchSpout spout = new FixedBatchSpout(new Fields("sentence"), 3, new Values("the cow jumped over the moon"),
+    FixedBatchSpout spout = new FixedBatchSpout(new Fields("asValue"), 3, new Values("the cow jumped over the moon"),
         new Values("the man went to the store and bought some candy"), new Values("four score and seven years ago"),
         new Values("how many apples can you eat"), new Values("to be or not to be the person"));
     spout.setCycle(true);
 
     TridentTopology topology = new TridentTopology();
-    TridentState wordCounts = topology.newStream("spout1", spout).parallelismHint(16).each(new Fields("sentence"),
+    TridentState wordCounts = topology.newStream("spout1", spout).parallelismHint(16).each(new Fields("asValue"),
         new Split(), new Fields("word")).groupBy(new Fields("word")).persistentAggregate(new MemoryMapState.Factory(),
         new Count(), new Fields("count")).parallelismHint(16);
 
