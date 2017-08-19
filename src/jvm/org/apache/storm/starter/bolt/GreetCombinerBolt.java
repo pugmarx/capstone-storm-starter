@@ -10,26 +10,28 @@ import java.util.HashMap;
 import java.util.Map;
 
 
-public class WordCounterBolt implements IRichBolt {
-    Map<String, Integer> counters;
+public class GreetCombinerBolt implements IRichBolt {
+    Map<String, String> greetMap;
     private OutputCollector collector;
 
     @Override
     public void prepare(Map stormConf, TopologyContext context,
                         OutputCollector collector) {
-        this.counters = new HashMap<>();
+        this.greetMap = new HashMap<>();
         this.collector = collector;
     }
 
     @Override
     public void execute(Tuple input) {
-        String str = input.getString(0);
-        if (!counters.containsKey(str)) {
-            counters.put(str, 1);
+        String greet = input.getStringByField("greetingField");
+        String lang = input.getStringByField("langField");
+
+        if (!greetMap.containsKey(greet)) {
+            greetMap.put(greet, lang);
             //greetMap.put(str, 1);
         } else {
-            Integer c = counters.get(str) + 1;
-            counters.put(str, c);
+            String g = greetMap.get(greet) + "," + lang;
+            greetMap.put(greet, g);
         }
         collector.ack(input);
     }
@@ -37,7 +39,7 @@ public class WordCounterBolt implements IRichBolt {
     @Override
     public void cleanup() {
         System.out.println("+++++++++++++++++++++++++++++++++++++++++++");
-        for (Map.Entry<String, Integer> entry : counters.entrySet()) {
+        for (Map.Entry<String, String> entry : greetMap.entrySet()) {
             System.out.println(entry.getKey() + " : " + entry.getValue());
         }
         System.out.println("+++++++++++++++++++++++++++++++++++++++++++");
