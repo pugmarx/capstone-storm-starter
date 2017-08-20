@@ -36,6 +36,7 @@ public class GreetSpitterBolt implements IRichBolt {
 
     @Override
     public void cleanup() {
+        System.out.println("-------------- splitter exit ---------------");
     }
 
     @Override
