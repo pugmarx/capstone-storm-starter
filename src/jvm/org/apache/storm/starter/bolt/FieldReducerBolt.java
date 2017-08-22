@@ -94,7 +94,5 @@ public class FieldReducerBolt implements IRichBolt {
         for (String str : splitted) {
             System.out.println(str);
         }
-
-
     }
 }

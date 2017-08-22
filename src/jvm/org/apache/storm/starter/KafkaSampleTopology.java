@@ -9,7 +9,7 @@ import org.apache.storm.kafka.bolt.KafkaBolt;
 import org.apache.storm.kafka.bolt.mapper.FieldNameBasedTupleToKafkaMapper;
 import org.apache.storm.kafka.bolt.selector.DefaultTopicSelector;
 import org.apache.storm.spout.SchemeAsMultiScheme;
-import org.apache.storm.starter.bolt.FieldReducerBolt;
+import org.apache.storm.starter.bolt.MicroBatchFieldReducerBolt;
 import org.apache.storm.topology.TopologyBuilder;
 
 import java.util.Properties;
@@ -40,7 +40,7 @@ public class KafkaSampleTopology {
 
         // FIXME - disable debug
         Config config = new Config();
-        config.setDebug(true);
+        config.setDebug(false);
 
         // Create KafkaSpout instance using Kafka configuration and add it to topology
         //topologyBuilder.setSpout("kafka-spout", new KafkaSpout<>(KafkaSpoutConfig.builder(KAFKA_BOOTSTRAP_SERVER,
@@ -59,7 +59,9 @@ public class KafkaSampleTopology {
         // ********************************************************************************
         //Route the output of Kafka Spout to Logger bolt to log messages consumed from Kafka
         // FIXME improve parallelism??
-        topologyBuilder.setBolt("reduce-fields", new FieldReducerBolt())
+        //topologyBuilder.setBolt("reduce-fields", new FieldReducerBolt())
+        //       .globalGrouping("kafka-spout");
+        topologyBuilder.setBolt("reduce-fields", new MicroBatchFieldReducerBolt())
                 .globalGrouping("kafka-spout");
 
         // ********************************************************************************
