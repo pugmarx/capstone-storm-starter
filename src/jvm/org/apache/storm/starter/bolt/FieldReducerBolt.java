@@ -15,7 +15,7 @@ import java.util.Map;
 
 public class FieldReducerBolt implements IRichBolt {
     private OutputCollector collector;
-    Fields outFields = null;
+    //Fields outFields = null;
     private static final Logger LOG = Logger.getLogger(FieldReducerBolt.class);
 
     @Override
@@ -27,29 +27,57 @@ public class FieldReducerBolt implements IRichBolt {
     @Override
     public void execute(Tuple input) {
         try {
+//            if (LOG.isDebugEnabled()) {
+//                Fields fields = input.getFields();
+//                if (fields.size() > 0) {
+//                    LOG.debug("+============== Fields ===============" + fields);
+//                } else {
+//                    LOG.debug("+============== NO FIELDS =================");
+//                }
+//            }
             String inputRecord = input.getString(0);
             String[] inpArr = inputRecord.split(",(?=(?:[^\\\"]*\\\"[^\\\"]*\\\")*[^\\\"]*$)");
             inpArr = StringUtils.stripAll(inpArr, "\"");
-            //LOG.debug(String.format("#### %s|%s|%s|%s|%s", inpArr[0], inpArr[4], inpArr[5], inpArr[11], inpArr[17]));
-            collector.emit(new Values(inpArr[0], inpArr[4], inpArr[5], inpArr[11], inpArr[17]));
+
+            if (LOG.isDebugEnabled()) {
+                LOG.debug(String.format("#### %s|%s|%s|%s|%s", inpArr[0], inpArr[4], inpArr[5], inpArr[11], inpArr[17]));
+            }
+            // Strip header
+            if (inpArr[0].equalsIgnoreCase("Year")) {
+                collector.ack(input);
+                return;
+            }
+            // Emit the relevant fields, as a single field (KafkaBolt needs single field)
+            String output = String.format("%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s", inpArr[0], inpArr[4], inpArr[5], inpArr[6], inpArr[10], inpArr[11], inpArr[17],
+                    inpArr[23], inpArr[34], inpArr[36], inpArr[41]);
+            collector.emit(new Values(new Object[]{output}));
             collector.ack(input);
 
         } catch (Exception aex) {
-            System.out.println("--- ignore bad msg ---");
+            if (LOG.isErrorEnabled()) {
+                LOG.error("Ignoring tuple" + input);
+            }
             collector.ack(input);
-            return;
         }
     }
 
 
     @Override
     public void declareOutputFields(OutputFieldsDeclarer declarer) {
-        // declarer.declare(outFields);
+        declarer.declare(new Fields(new String[]{"output"}));
+
+        // KafkaBolt needs only one (key) field, so the below does not work!!
+        //declarer.declare(new Fields("Year", "FlightDate", "CRSDepTime",
+        //        "DayOfWeek", "UniqueCarrier", "FlightNum", "Origin",
+        //        "Dest", "DepDelay", "CRSArrTime", "ArrDelay",
+        //        "Cancelled"));
     }
 
     @Override
     public void cleanup() {
-        System.out.println("-------------- FieldReducerBolt exit ---------------");
+        if (LOG.isInfoEnabled()) {
+            LOG.info("-------------- FieldReducerBolt exit ---------------");
+        }
     }
 
     @Override
