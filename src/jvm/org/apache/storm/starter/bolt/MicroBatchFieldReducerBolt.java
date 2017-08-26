@@ -98,7 +98,7 @@ public class MicroBatchFieldReducerBolt implements IRichBolt {
 
         // Get the relevant fields, as a single field (KafkaBolt needs single field)
         return String.format("%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s", inpArr[0], inpArr[4], inpArr[5], inpArr[6], inpArr[10],
-                inpArr[11], inpArr[17], inpArr[23], inpArr[34], inpArr[36], inpArr[41]);
+                inpArr[11], inpArr[17], inpArr[23], inpArr[25], inpArr[34], inpArr[36], inpArr[41]);
     }
 
     /**
