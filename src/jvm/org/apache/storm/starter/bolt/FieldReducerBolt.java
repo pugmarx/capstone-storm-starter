@@ -54,9 +54,9 @@ public class FieldReducerBolt implements IRichBolt {
             collector.ack(input);
 
         } catch (Exception aex) {
-            if (LOG.isErrorEnabled()) {
-                LOG.error("Ignoring tuple" + input);
-            }
+            //if (LOG.isErrorEnabled()) {
+            LOG.error("Ignoring tuple" + input);
+            //}
             collector.ack(input);
         }
     }
@@ -75,9 +75,9 @@ public class FieldReducerBolt implements IRichBolt {
 
     @Override
     public void cleanup() {
-        if (LOG.isInfoEnabled()) {
-            LOG.info("-------------- FieldReducerBolt exit ---------------");
-        }
+        //if (LOG.isInfoEnabled()) {
+        LOG.info("-------------- FieldReducerBolt exit ---------------");
+        //}
     }
 
     @Override

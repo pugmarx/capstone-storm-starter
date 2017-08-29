@@ -1,6 +1,7 @@
 package org.apache.storm.starter;
 
 
+import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 import org.apache.storm.Config;
 import org.apache.storm.LocalCluster;
@@ -16,23 +17,32 @@ import java.util.Properties;
 import java.util.UUID;
 
 
-public class KafkaSampleTopology {
+public class KafkaLocalReaderTopology {
+    private static final String ZK_LOCAL_HOST = "localhost:2181";
 
-    private static final BrokerHosts ZK_HOSTS = new ZkHosts("localhost:2181");
     //private static final String KAFKA_BOOTSTRAP_SERVER = "localhost:2181";
     private static final String INPUT_TOPIC = "test";
     private static final String OUTPUT_TOPIC = "testclean";
     private static final String BROKER_URL = "localhost:9092";
     private static final String ZK_ROOT = "/brokers";
-    private static final String CLIENT_ID = UUID.randomUUID().toString(); //FIXME keep it constant??
+    private static final String CLIENT_ID = UUID.randomUUID().toString();
 
 
-    private static final Logger LOG = Logger.getLogger(KafkaSampleTopology.class);
+    private static final Logger LOG = Logger.getLogger(KafkaLocalReaderTopology.class);
 
     public static void main(String[] args) {
 
-        final SpoutConfig kafkaConf = new SpoutConfig(ZK_HOSTS, INPUT_TOPIC, ZK_ROOT, CLIENT_ID);
-        //kafkaConf.
+        String zkHost = (args.length > 0 && StringUtils.isNotEmpty(args[0])) ? args[0] : ZK_LOCAL_HOST;
+        final BrokerHosts ZK_HOSTS = new ZkHosts(zkHost);
+
+        String brokerURL = (args.length > 1 && StringUtils.isNotEmpty(args[1])) ? args[1] : BROKER_URL;
+        String inTopic = (args.length > 2 && StringUtils.isNotEmpty(args[2])) ? args[2] : INPUT_TOPIC;
+        String outTopic = (args.length > 3 && StringUtils.isNotEmpty(args[3])) ? args[3] : OUTPUT_TOPIC;
+        String clientId = (args.length > 4 && StringUtils.isNotEmpty(args[4])) ? args[4] : CLIENT_ID;
+
+        //final SpoutConfig kafkaConf = new SpoutConfig(ZK_HOSTS, INPUT_TOPIC, ZK_ROOT, CLIENT_ID);
+        final SpoutConfig kafkaConf = new SpoutConfig(ZK_HOSTS, inTopic, ZK_ROOT, clientId);
+
         kafkaConf.scheme = new SchemeAsMultiScheme(new StringScheme());
 
         // Build topology to consume message from kafka and print them on console
@@ -68,9 +78,9 @@ public class KafkaSampleTopology {
         // ********************* 3. Bolt that writes to another Kafka topic ***************
         // ********************************************************************************
         // FIXME improve parallelism??
-        KafkaBolt<String, String> bolt = (new KafkaBolt()).withProducerProperties(newProps(BROKER_URL,
-                OUTPUT_TOPIC))
-                .withTopicSelector(new DefaultTopicSelector(OUTPUT_TOPIC))
+        KafkaBolt<String, String> bolt = (new KafkaBolt()).withProducerProperties(newProps(brokerURL,
+                outTopic))
+                .withTopicSelector(new DefaultTopicSelector(outTopic))
                 .withTupleToKafkaMapper(new FieldNameBasedTupleToKafkaMapper("key",
                         "output"));
 
@@ -84,7 +94,7 @@ public class KafkaSampleTopology {
         // Submit topology to local cluster
         // FIXME - enable cluster deployment
         final LocalCluster localCluster = new LocalCluster();
-        localCluster.submitTopology("kafka-topology", config, topologyBuilder.createTopology());
+        localCluster.submitTopology("kafka-local-topology", config, topologyBuilder.createTopology());
     }
 
     private static Properties newProps(final String brokerUrl, final String topicName) {
