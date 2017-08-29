@@ -10,6 +10,7 @@ import org.apache.storm.kafka.bolt.KafkaBolt;
 import org.apache.storm.kafka.bolt.mapper.FieldNameBasedTupleToKafkaMapper;
 import org.apache.storm.kafka.bolt.selector.DefaultTopicSelector;
 import org.apache.storm.spout.SchemeAsMultiScheme;
+import org.apache.storm.starter.bolt.FieldReducerBolt;
 import org.apache.storm.starter.bolt.MicroBatchFieldReducerBolt;
 import org.apache.storm.topology.TopologyBuilder;
 
@@ -69,10 +70,10 @@ public class KafkaLocalReaderTopology {
         // ********************************************************************************
         //Route the output of Kafka Spout to Logger bolt to log messages consumed from Kafka
         // FIXME improve parallelism??
-        //topologyBuilder.setBolt("reduce-fields", new FieldReducerBolt())
-        //       .globalGrouping("kafka-spout");
-        topologyBuilder.setBolt("reduce-fields", new MicroBatchFieldReducerBolt())
+        topologyBuilder.setBolt("reduce-fields", new FieldReducerBolt())
                 .globalGrouping("kafka-spout");
+        // topologyBuilder.setBolt("reduce-fields", new MicroBatchFieldReducerBolt())
+        //         .globalGrouping("kafka-spout");
 
         // ********************************************************************************
         // ********************* 3. Bolt that writes to another Kafka topic ***************

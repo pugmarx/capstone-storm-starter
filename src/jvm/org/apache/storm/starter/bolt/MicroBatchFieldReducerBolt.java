@@ -36,7 +36,8 @@ public class MicroBatchFieldReducerBolt implements IRichBolt {
      * are not met. This should typically be equal to
      * topology.tick.tuple.freq.secs and half of topology.message.timeout.secs
      */
-    int batchIntervalInSec = 45;
+    //int batchIntervalInSec = 45;
+    int batchIntervalInSec = 15;
 
     /**
      * The last batch process time seconds. Used for tracking purpose
