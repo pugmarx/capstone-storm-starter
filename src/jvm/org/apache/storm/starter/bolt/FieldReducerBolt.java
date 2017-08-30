@@ -27,29 +27,25 @@ public class FieldReducerBolt implements IRichBolt {
     @Override
     public void execute(Tuple input) {
         try {
-//            if (LOG.isDebugEnabled()) {
-//                Fields fields = input.getFields();
-//                if (fields.size() > 0) {
-//                    LOG.debug("+============== Fields ===============" + fields);
-//                } else {
-//                    LOG.debug("+============== NO FIELDS =================");
-//                }
-//            }
+
             String inputRecord = input.getString(0);
             String[] inpArr = inputRecord.split(",(?=(?:[^\\\"]*\\\"[^\\\"]*\\\")*[^\\\"]*$)");
             inpArr = StringUtils.stripAll(inpArr, "\"");
 
-            if (LOG.isDebugEnabled()) {
-                LOG.debug(String.format("#### %s|%s|%s|%s|%s", inpArr[0], inpArr[4], inpArr[5], inpArr[11], inpArr[17]));
-            }
+            // if (LOG.isDebugEnabled()) {
+            //    LOG.debug(String.format("#### %s|%s|%s|%s|%s", inpArr[0], inpArr[4], inpArr[5], inpArr[11], inpArr[17]));
+            //}
+
             // Strip header
-            if (inpArr[0].equalsIgnoreCase("Year")) {
+            if (inpArr[0].equals("Year")) {
                 collector.ack(input);
                 return;
             }
+
             // Emit the relevant fields, as a single field (KafkaBolt needs single field)
-            String output = String.format("%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s", inpArr[0], inpArr[4], inpArr[5],
-                    inpArr[6], inpArr[10], inpArr[11], inpArr[17], inpArr[23], inpArr[25], inpArr[34], inpArr[36],
+            // 0,5,23,4,6,10,11,17,25,34,36,41
+            String output = String.format("%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s", inpArr[0], inpArr[5], inpArr[23],
+                    inpArr[4], inpArr[6], inpArr[10], inpArr[11], inpArr[17], inpArr[25], inpArr[34], inpArr[36],
                     inpArr[41]);
             collector.emit(new Values(new Object[]{output}));
             collector.ack(input);

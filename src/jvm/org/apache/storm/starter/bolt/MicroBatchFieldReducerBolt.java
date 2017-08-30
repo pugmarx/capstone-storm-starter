@@ -2,6 +2,7 @@ package org.apache.storm.starter.bolt;
 
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
+import org.apache.storm.Config;
 import org.apache.storm.Constants;
 import org.apache.storm.task.OutputCollector;
 import org.apache.storm.task.TopologyContext;
@@ -29,7 +30,7 @@ public class MicroBatchFieldReducerBolt implements IRichBolt {
     /**
      * The threshold after which the batch should be flushed out.
      */
-    int batchSize = 100;
+    int batchSize = 10000;
 
     /**
      * The batch interval in sec. Minimum time between flushes if the batch sizes
@@ -37,7 +38,7 @@ public class MicroBatchFieldReducerBolt implements IRichBolt {
      * topology.tick.tuple.freq.secs and half of topology.message.timeout.secs
      */
     //int batchIntervalInSec = 45;
-    int batchIntervalInSec = 15;
+    int batchIntervalInSec = 10;
 
     /**
      * The last batch process time seconds. Used for tracking purpose
@@ -90,14 +91,16 @@ public class MicroBatchFieldReducerBolt implements IRichBolt {
                 Constants.SYSTEM_TICK_STREAM_ID);
     }
 
-    private String processTuple(String[] inpArr) {
-        if (LOG.isDebugEnabled()) {
-            LOG.debug(String.format("#### %s|%s|%s|%s|%s", inpArr[0], inpArr[4], inpArr[5], inpArr[11], inpArr[17]));
-        }
+    private String processTupleArr(String[] inpArr) {
+//        if (LOG.isDebugEnabled()) {
+//            LOG.debug(String.format("#### %s|%s|%s|%s|%s", inpArr[0], inpArr[4], inpArr[5], inpArr[11], inpArr[17]));
+//        }
 
         // Get the relevant fields, as a single field (KafkaBolt needs single field)
-        return String.format("%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s", inpArr[0], inpArr[4], inpArr[5], inpArr[6], inpArr[10],
-                inpArr[11], inpArr[17], inpArr[23], inpArr[25], inpArr[34], inpArr[36], inpArr[41]);
+        // 0,5,23,4,6,10,11,17,25,34,36,41
+        return String.format("%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s", inpArr[0], inpArr[5], inpArr[23],
+                inpArr[4], inpArr[6], inpArr[10], inpArr[11], inpArr[17], inpArr[25], inpArr[34], inpArr[36],
+                inpArr[41]);
     }
 
     /**
@@ -105,14 +108,15 @@ public class MicroBatchFieldReducerBolt implements IRichBolt {
      */
     public void finishBatch() {
 
+        if (queue.isEmpty()) {
+            return;
+        }
+
         LOG.debug("Finishing batch of size " + queue.size());
         lastBatchProcessTimeSeconds = System.currentTimeMillis() / 1000;
 
         List<Tuple> tuples = new ArrayList<>();
         queue.drainTo(tuples);
-
-        //BulkRequestBuilder bulkRequest = client.prepareBulk();
-        //BulkResponse bulkResponse = null;
 
         for (Tuple tuple : tuples) {
 
@@ -125,43 +129,15 @@ public class MicroBatchFieldReducerBolt implements IRichBolt {
                 collector.ack(tuple);
                 continue;
             }
-            collector.emit(new Values(new Object[]{processTuple(inpArr)}));
+            collector.emit(new Values(new Object[]{processTupleArr(inpArr)}));
             collector.ack(tuple);
 
         }
-
-//        try {
-//            // Execute bulk request and get individual tuple responses back.
-//            bulkResponse = bulkRequest.execute().actionGet();
-//            BulkItemResponse[] responses = bulkResponse.getItems();
-//            BulkItemResponse response = null;
-//
-//            LOG.debug("Executed the batch. Processing responses.");
-//            for (int counter = 0; counter < responses.length; counter++) {
-//                response = responses[counter];
-//
-//                if (response.isFailed()) {
-//                    ElasticSearchDocument failedEsDocument = this.tupleMapper
-//                            .mapToDocument(tuples.get(counter));
-//                    LOG.error("Failed to process tuple # " + counter);
-//                    this.collector.fail(tuples.get(counter));
-//
-//                } else {
-//                    LOG.debug("Successfully processed tuple # " + counter);
-//                    this.collector.ack(tuples.get(counter));
-//                }
-//            }
-//
-//        } catch (Exception e) {
-//            LOG.error("Unable to process " + tuples.size() + " tuples", e);
-//
-//            // Fail entire batch
-//            for (Tuple tuple : tuples) {
-//                this.collector.fail(tuple);
-//            }
-//
-//        }
-
+        try {
+            Thread.sleep(1000);
+        } catch (Exception e) {
+            //ignore
+        }
     }
 
 
@@ -172,7 +148,9 @@ public class MicroBatchFieldReducerBolt implements IRichBolt {
 
     @Override
     public Map<String, Object> getComponentConfiguration() {
-        return null;
+        Config conf = new Config();
+        conf.put(Config.TOPOLOGY_TICK_TUPLE_FREQ_SECS, 10);
+        return conf;
     }
 
     @Override
@@ -182,6 +160,6 @@ public class MicroBatchFieldReducerBolt implements IRichBolt {
 
     @Override
     public void cleanup() {
-        queue.clear();
+        finishBatch();
     }
 }
