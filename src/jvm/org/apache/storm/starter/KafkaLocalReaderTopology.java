@@ -10,7 +10,6 @@ import org.apache.storm.kafka.bolt.KafkaBolt;
 import org.apache.storm.kafka.bolt.mapper.FieldNameBasedTupleToKafkaMapper;
 import org.apache.storm.kafka.bolt.selector.DefaultTopicSelector;
 import org.apache.storm.spout.SchemeAsMultiScheme;
-import org.apache.storm.starter.bolt.FieldReducerBolt;
 import org.apache.storm.starter.bolt.MicroBatchFieldReducerBolt;
 import org.apache.storm.topology.TopologyBuilder;
 
@@ -28,10 +27,9 @@ public class KafkaLocalReaderTopology {
     private static final String ZK_ROOT = "/brokers";
     private static final String CLIENT_ID = UUID.randomUUID().toString();
 
-
     private static final Logger LOG = Logger.getLogger(KafkaLocalReaderTopology.class);
 
-    public static void main(String[] args) {
+    public static void main(String[] args) throws Exception {
 
         String zkHost = (args.length > 0 && StringUtils.isNotEmpty(args[0])) ? args[0] : ZK_LOCAL_HOST;
         final BrokerHosts ZK_HOSTS = new ZkHosts(zkHost);
@@ -41,9 +39,8 @@ public class KafkaLocalReaderTopology {
         String outTopic = (args.length > 3 && StringUtils.isNotEmpty(args[3])) ? args[3] : OUTPUT_TOPIC;
         String clientId = (args.length > 4 && StringUtils.isNotEmpty(args[4])) ? args[4] : CLIENT_ID;
 
-        //final SpoutConfig kafkaConf = new SpoutConfig(ZK_HOSTS, INPUT_TOPIC, ZK_ROOT, CLIENT_ID);
         final SpoutConfig kafkaConf = new SpoutConfig(ZK_HOSTS, inTopic, ZK_ROOT, clientId);
-
+        kafkaConf.retryLimit = 0;
         kafkaConf.scheme = new SchemeAsMultiScheme(new StringScheme());
 
         // Build topology to consume message from kafka and print them on console
@@ -53,49 +50,47 @@ public class KafkaLocalReaderTopology {
         Config config = new Config();
         config.setDebug(false);
 
-        // Create KafkaSpout instance using Kafka configuration and add it to topology
-        //topologyBuilder.setSpout("kafka-spout", new KafkaSpout<>(KafkaSpoutConfig.builder(KAFKA_BOOTSTRAP_SERVER,
-        //        INPUT_TOPIC).build()), 1);
+        // FIXME experimental
+        config.setNumWorkers(1);
+
 
         // ********************************************************************************
         // ********************* 1. Spout that reads from Kafka ***************************
         // ********************************************************************************
-        // FIXME improve parallelism??
         KafkaSpout kafkaSpout = new KafkaSpout(kafkaConf);
-        topologyBuilder.setSpout("kafka-spout", kafkaSpout, 1);
+        topologyBuilder.setSpout("kafka-spout", kafkaSpout, 15).setNumTasks(2);
 
 
         // ********************************************************************************
         // ********************** 2. Bolt that reads from Spout ***************************
         // ********************************************************************************
         //Route the output of Kafka Spout to Logger bolt to log messages consumed from Kafka
-        // FIXME improve parallelism??
-        topologyBuilder.setBolt("reduce-fields", new FieldReducerBolt())
-                .globalGrouping("kafka-spout");
-        // topologyBuilder.setBolt("reduce-fields", new MicroBatchFieldReducerBolt())
+        // topologyBuilder.setBolt("reduce-fields", new FieldReducerBolt(), 15).setNumTasks(2)
         //         .globalGrouping("kafka-spout");
+        topologyBuilder.setBolt("reduce-fields", new MicroBatchFieldReducerBolt(), 15).setNumTasks(2)
+                .globalGrouping("kafka-spout");
+
 
         // ********************************************************************************
         // ********************* 3. Bolt that writes to another Kafka topic ***************
         // ********************************************************************************
-        // FIXME improve parallelism??
         KafkaBolt<String, String> bolt = (new KafkaBolt()).withProducerProperties(newProps(brokerURL,
                 outTopic))
                 .withTopicSelector(new DefaultTopicSelector(outTopic))
                 .withTupleToKafkaMapper(new FieldNameBasedTupleToKafkaMapper("key",
                         "output"));
 
-        //.withTupleToKafkaMapper(new FieldNameBasedTupleToKafkaMapper("key", "str")); <-- this works with KafkaSpout!!
+        // FIXME don't want ACKs
+        bolt.setFireAndForget(true);
 
         // Tie the kafkabolt to reduce-field bolt
-        topologyBuilder.setBolt("kafka-producer-bolt", bolt).shuffleGrouping("reduce-fields");
+        topologyBuilder.setBolt("kafka-producer-bolt", bolt, 15).setNumTasks(2)
+                .shuffleGrouping("reduce-fields");
 
-        //** experimental ** topologyBuilder.setBolt("kafka-producer-bolt", bolt).shuffleGrouping("kafka-spout");
-
-        // Submit topology to local cluster
-        // FIXME - enable cluster deployment
+        // Submit topology to local cluster // FIXME cluster?
         final LocalCluster localCluster = new LocalCluster();
-        localCluster.submitTopology("kafka-local-topology", config, topologyBuilder.createTopology());
+        String topologyName = "kafka-local-topology";
+        localCluster.submitTopology(topologyName, config, topologyBuilder.createTopology());
     }
 
     private static Properties newProps(final String brokerUrl, final String topicName) {
